@@ -2,6 +2,7 @@
 
 #include "ast.hpp"
 #include "types.hpp"
+#include "utils/result.hpp"
 
 #include <fstream>
 #include <variant>
@@ -29,7 +30,7 @@ private:
 public:
     Lexer(const char* path);
 
-    TokenData NextToken();
+    utils::Result<TokenData, std::string> NextToken();
     ast::Operator GetOperator();
     std::string GetIdentifier();
     Type GetType();

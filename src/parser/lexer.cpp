@@ -1,23 +1,23 @@
 #include "lexer.hpp"
 
 #include "ast.hpp"
-#include "tokens.hpp"
+#include "utils/result.hpp"
 
 #include <cctype>
-#include <concepts>
 #include <cstdio>
 #include <fstream>
-#include <iostream>
 #include <string>
 
 using namespace parser;
 
 /// Helper function to cast `int` return type to `char` when using peek function
+[[clang::always_inline]]
 static inline char peek(std::basic_ifstream<char>& stream)
 {
     return static_cast<char>(stream.peek());
 }
 /// Helper function to cast `int` return type to `char` when using get function
+[[clang::always_inline]]
 static inline char get(std::basic_ifstream<char>& stream)
 {
     return static_cast<char>(stream.get());
@@ -40,7 +40,7 @@ void Lexer::SkipWhitespace()
 bool Lexer::NextIdentifier()
 {
     SkipWhitespace();
-    char nextChar = static_cast<char>(peek(filestream));
+    char nextChar = peek(filestream);
 
     // If the next identifier is a special character
     if (!isalpha(nextChar) || nextChar == '_')
@@ -49,7 +49,10 @@ bool Lexer::NextIdentifier()
     identifier = get(filestream);
     nextChar = peek(filestream);
     while (isalnum(nextChar) || nextChar == '_')
+    {
         identifier += get(filestream);
+        nextChar = peek(filestream);
+    }
 
     return true;
 }
@@ -58,7 +61,7 @@ bool Lexer::NextIdentifier()
 bool Lexer::NextNumber()
 {
     using namespace types;
-    auto IsValidNumberChar = [](const char c) { return isdigit(c) || c == '.'; };
+    const auto IsValidNumberChar = [](const char c) -> bool { return isdigit(c) || c == '.'; };
 
     if (!IsValidNumberChar(peek(filestream)))
         return false;
@@ -70,13 +73,14 @@ bool Lexer::NextNumber()
     while (IsValidNumberChar(peek(filestream)))
     {
         const char currChar = get(filestream);
-        // Return error: too many `.` characters in number
-        if (currChar == '.' && type == Type::Flow)
-            return false;
-
         // First `.` character found
         if (currChar == '.' && type == Type::Rune)
             type = Type::Flow;
+
+        // Return error: too many `.` characters in number
+        else [[unlikely]] if (currChar == '.' && type == Type::Flow)
+            return false;
+
 
         numberStr += currChar;
     }
@@ -114,7 +118,7 @@ bool Lexer::NextNumber()
 /* } */
 
 // Needs to return error
-Lexer::TokenData Lexer::NextToken()
+utils::Result<Lexer::TokenData, std::string> Lexer::NextToken()
 {
     SkipWhitespace();
     /**/
