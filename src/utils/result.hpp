@@ -24,13 +24,13 @@ class Result
 
         T ok;
         E err;
-    } value;
+    } const value;
 
     enum class State
     {
         Ok,
         Err,
-    } state;
+    } const state;
 
 public:
     Result(T ok) : value{ok}, state{State::Ok} {}
@@ -66,16 +66,33 @@ public:
         return value.err;
     }
 
+    [[nodiscard]]
+    inline T GetOr(T other) const noexcept
+    {
+        switch (state)
+        {
+        case State::Ok:
+            return value.ok;
+
+        case State::Err:
+            return other;
+
+        default:
+            std::unreachable();
+        }
+        std::unreachable();
+    }
+
     inline bool IsOk() const noexcept { return state == State::Ok; }
 
     inline bool IsErr() const noexcept { return state == State::Err; }
 
-    inline void IfOk(std::function<void(T)> func)
+    inline void IfOk(std::function<void(T)> func) const noexcept
     {
         Visit(func, [](E) {});
     }
 
-    inline void IfErr(std::function<void(T)> func)
+    inline void IfErr(std::function<void(T)> func) const noexcept
     {
         Visit([](T) {}, func);
     }
